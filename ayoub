@@ -1,0 +1,38 @@
+from flask import Flask, request, jsonify
+import tensorflow as tf
+from tensorflow.keras.models import load_model
+import numpy as np
+from PIL import Image
+
+app = Flask(__name__)
+
+# تحميل النموذج المدرب
+model = load_model('mnist_model.h5')
+
+# دالة لمعالجة الصور
+def prepare_image(image):
+    image = image.resize((28, 28)).convert('L')
+    image = np.array(image) / 255.0
+    image = np.expand_dims(image, axis=0)
+    return image
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    # استقبال الصورة من المستخدم
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'})
+    
+    file = request.files['file']
+    image = Image.open(file.stream)
+    
+    # معالجة الصورة
+    processed_image = prepare_image(image)
+    
+    # توقع النموذج
+    prediction = model.predict(processed_image)
+    predicted_class = np.argmax(prediction)
+    
+    return jsonify({'prediction': int(predicted_class)})
+
+if __name__ == '__main__':
+    app.run(debug=True)
